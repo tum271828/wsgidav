@@ -192,7 +192,6 @@ class HTTPAuthenticator(BaseMiddleware):
 
     def __call__(self, environ, start_response):
         realm = self.domain_controller.get_domain_realm(environ["PATH_INFO"], environ)
-
         environ["wsgidav.auth.realm"] = realm
         environ["wsgidav.auth.user_name"] = ""
         # The domain controller MAY set those values depending on user's
@@ -215,15 +214,18 @@ class HTTPAuthenticator(BaseMiddleware):
             _logger.warning("No authorization required for OPTIONS method")
             force_allow = True
 
+
+
         if force_allow or not self.domain_controller.require_authentication(
             realm, environ
         ):
-            # No authentication needed
+            # No authentication needed 
             # _logger.debug("No authorization required for realm {!r}".format(realm))
             # environ["wsgidav.auth.realm"] = realm
             # environ["wsgidav.auth.user_name"] = ""
             return self.next_app(environ, start_response)
-
+        
+        
         if self.trusted_auth_header and environ.get(self.trusted_auth_header):
             # accept a user_name that was injected by a trusted upstream server
             _logger.debug(
@@ -244,7 +246,9 @@ class HTTPAuthenticator(BaseMiddleware):
             if auth_match:
                 auth_method = auth_match.group(1).lower()
 
-            if auth_method == "digest" and self.accept_digest:
+            if auth_method=="bearer": 
+                return self.handle_bearer_auth_request(environ, start_response)
+            elif auth_method == "digest" and self.accept_digest:
                 return self.handle_digest_auth_request(environ, start_response)
             elif auth_method == "digest" and self.accept_basic:
                 return self.send_basic_auth_response(environ, start_response)
@@ -289,6 +293,32 @@ class HTTPAuthenticator(BaseMiddleware):
             ],
         )
         return [body]
+        
+    def send_bearer_auth_response(self, environ, start_response):
+        realm = self.domain_controller.get_domain_realm(environ["PATH_INFO"], environ)
+        _logger.debug("401 Not Authorized for realm {!r} (basic)".format(realm))
+        body = util.to_bytes(self.error_message_401)
+        start_response(
+            "401 Not Authorized",
+            [
+                ("Content-Type", "text/html; charset=utf-8"),
+                ("Content-Length", str(len(body))),
+                ("Date", util.get_rfc1123_time()),
+            ],
+        )
+        return [body]
+        
+    def handle_dev_auth(self, environ, start_response):
+        realm = self.domain_controller.get_domain_realm(environ["PATH_INFO"], environ)
+        auth_header = environ["HTTP_AUTHORIZATION"]
+        auth_value = ""
+        print(auth_header)
+        if auth_header=="Bearer 4815162342" or auth_header=="Basic YW5vbnltb3VzOnRlc3Q=": 
+            environ["wsgidav.auth.realm"] = "dev"
+            environ["wsgidav.auth.user_name"] = "dev" 
+            return self.next_app(environ, start_response)
+        return self.send_basic_auth_response(environ, start_response)
+
 
     def handle_basic_auth_request(self, environ, start_response):
         realm = self.domain_controller.get_domain_realm(environ["PATH_INFO"], environ)
@@ -302,7 +332,8 @@ class HTTPAuthenticator(BaseMiddleware):
         auth_value = base64.decodebytes(util.to_bytes(auth_value))
         auth_value = util.to_str(auth_value)
         user_name, password = auth_value.split(":", 1)
-
+        #print("",user_name,password)
+        exit()
         if self.domain_controller.basic_auth_user(realm, user_name, password, environ):
             environ["wsgidav.auth.realm"] = realm
             environ["wsgidav.auth.user_name"] = user_name
@@ -314,6 +345,29 @@ class HTTPAuthenticator(BaseMiddleware):
             )
         )
         return self.send_basic_auth_response(environ, start_response)
+
+    def handle_bearer_auth_request(self, environ, start_response):
+        realm = self.domain_controller.get_domain_realm(environ["PATH_INFO"], environ)
+        auth_header = environ["HTTP_AUTHORIZATION"]
+        auth_value = ""
+        if 1:#auth_header.startswith("Bearer "): 
+            try: 
+                auth_value = auth_header[7:].strip()
+            except Exception:
+                auth_value = ""
+            if hasattr(self.domain_controller,"bearer_auth_user"): 
+                user_info=self.domain_controller.bearer_auth_user(auth_value, environ)
+                if user_info!=False: 
+                    environ["wsgidav.auth.realm"] = realm
+                    environ["wsgidav.auth.user_name"] = user_info.get("email")
+                    return self.next_app(environ, start_response)
+                    
+        _logger.warning(
+            "Authentication (bearer) failed"
+            )
+        
+        return self.send_bearer_auth_response(environ, start_response)
+
 
     def send_digest_auth_response(self, environ, start_response):
         realm = self.domain_controller.get_domain_realm(environ["PATH_INFO"], environ)

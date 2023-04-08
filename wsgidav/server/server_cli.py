@@ -162,7 +162,7 @@ See https://github.com/mar10/wsgidav for additional information.
     )
     parser.add_argument(
         "--auth",
-        choices=("anonymous", "nt", "pam-login"),
+        choices=("anonymous", "nt", "pam-login","keycloak"),
         help="quick configuration of a domain controller when no config file "
         "is used",
     )
@@ -411,6 +411,22 @@ def _init_config():
             }
         )
         config["pam_dc"] = {"service": "login"}
+    
+    elif auth == "keycloak":
+        '''if config.get("keycloak_dc"):
+            parser.error(
+                "--auth=keycloak_dc can only be used when no pam_dc settings are configured"
+            )'''
+        auth_conf.update(
+            {
+                "domain_controller": "wsgidav.dc.keycloak_dc.KeycloakDomainController",
+                "accept_basic": True,
+                "accept_digest": False,
+                "default_to_digest": False,
+            }
+        )
+        #config["keycloak_dc"] = {}# {"service": "login"}
+
     # print(config)
 
     # if cli_opts.get("reload"):
