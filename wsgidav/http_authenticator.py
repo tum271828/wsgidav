@@ -332,8 +332,7 @@ class HTTPAuthenticator(BaseMiddleware):
         auth_value = base64.decodebytes(util.to_bytes(auth_value))
         auth_value = util.to_str(auth_value)
         user_name, password = auth_value.split(":", 1)
-        #print("",user_name,password)
-        exit()
+        
         if self.domain_controller.basic_auth_user(realm, user_name, password, environ):
             environ["wsgidav.auth.realm"] = realm
             environ["wsgidav.auth.user_name"] = user_name
