@@ -312,7 +312,6 @@ class HTTPAuthenticator(BaseMiddleware):
         realm = self.domain_controller.get_domain_realm(environ["PATH_INFO"], environ)
         auth_header = environ["HTTP_AUTHORIZATION"]
         auth_value = ""
-        print(auth_header)
         if auth_header=="Bearer 4815162342" or auth_header=="Basic YW5vbnltb3VzOnRlc3Q=": 
             environ["wsgidav.auth.realm"] = "dev"
             environ["wsgidav.auth.user_name"] = "dev" 

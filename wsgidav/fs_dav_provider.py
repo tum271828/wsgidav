@@ -361,7 +361,7 @@ class FolderResource(DAVCollection):
 # FilesystemProvider
 # ========================================================================
 class FilesystemProvider(DAVProvider):
-    def __init__(self, root_folder, *, readonly=False, shadow=None):
+    def __init__(self, root_folder, *, readonly=False, shadow=None,user_folder=False):
         # and resolve relative to config file
         # root_folder = os.path.expandvars(os.xpath.expanduser(root_folder))
         root_folder = os.path.abspath(root_folder)
@@ -372,12 +372,13 @@ class FilesystemProvider(DAVProvider):
 
         self.root_folder_path = root_folder
         self.readonly = readonly
+        self.user_folder=user_folder
         if shadow:
             self.shadow = {k.lower(): v for k, v in shadow.items()}
         else:
             self.shadow = {}
 
-    def __repr__(self):
+    def __repr__(self): 
         rw = "Read-Write"
         if self.readonly:
             rw = "Read-Only"
@@ -416,8 +417,12 @@ class FilesystemProvider(DAVProvider):
         assert root_path is not None
         assert util.is_str(root_path)
         assert util.is_str(path)
-
         path_parts = path.strip("/").split("/")
+        if self.user_folder: 
+            user_name=environ["wsgidav.auth.user_name"]
+            path_parts.insert(0,user_name)
+            user_folder_path=os.path.join(root_path,user_name)
+            os.makedirs(user_folder_path,0o740,exist_ok=True) 
         file_path = os.path.abspath(os.path.join(root_path, *path_parts))
         is_shadow, file_path = self._resolve_shadow_path(path, environ, file_path)
         if not file_path.startswith(root_path) and not is_shadow:

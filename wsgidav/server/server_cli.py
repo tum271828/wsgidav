@@ -347,7 +347,7 @@ def _init_config():
 
     if cli_opts.get("root_path"):
         root_path = os.path.abspath(cli_opts.get("root_path"))
-        config["provider_mapping"]["/"] = FilesystemProvider(root_path)
+        config["provider_mapping"]["/"] = FilesystemProvider(root_path,user_folder=True)
 
     if config["verbose"] >= 5:
         # TODO: remove passwords from user_mapping
