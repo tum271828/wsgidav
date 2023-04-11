@@ -12,6 +12,7 @@ from keycloak import KeycloakOpenID
 
 from wsgidav import util
 from wsgidav.dc.base_dc import BaseDomainController
+import ring 
 
 __docformat__ = "reStructuredText" 
 _logger = util.get_module_logger(__name__)
@@ -40,6 +41,14 @@ class KeycloakDomainController(BaseDomainController):
 
     def require_authentication(self, realm, environ):
         return True
+    
+    def __ring_key__(self):
+        return "all"
+
+    @ring.lru() 
+    def userinfo(self,access_token): 
+        userinfo = self.openid.userinfo(access_token)
+        return userinfo 
         
     def bearer_auth_user(self, access_token, environ):
         try:
